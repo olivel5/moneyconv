@@ -1,0 +1,10 @@
+[package]
+name = "moneyconv"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Convert currency amounts between decimal and integer minor-unit formats"
+
+[[bin]]
+name = "moneyconv"
+path = "src/main.rs"
