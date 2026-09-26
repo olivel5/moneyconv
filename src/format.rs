@@ -87,3 +87,106 @@ pub fn format_minor(minor: i64, exponent: u32) -> String {
 
     format!("{}{}.{:0width$}", sign, int_part, frac_part, width = exponent as usize)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_decimal_plain() {
+        assert_eq!(parse_decimal("19.99", 2), Ok(1999));
+        assert_eq!(parse_decimal("0.05", 2), Ok(5));
+        assert_eq!(parse_decimal("500", 0), Ok(500));
+        assert_eq!(parse_decimal("12.500", 3), Ok(12500));
+    }
+
+    #[test]
+    fn parse_decimal_pads_short_fraction() {
+        // "19.9" for a 2-exponent currency means 19.90, not 19.09.
+        assert_eq!(parse_decimal("19.9", 2), Ok(1990));
+        assert_eq!(parse_decimal("19.1", 3), Ok(19100));
+    }
+
+    #[test]
+    fn parse_decimal_signs() {
+        assert_eq!(parse_decimal("-3", 2), Ok(-300));
+        assert_eq!(parse_decimal("+3", 2), Ok(300));
+        assert_eq!(parse_decimal("-0.01", 2), Ok(-1));
+    }
+
+    #[test]
+    fn parse_decimal_missing_integer_or_fraction_part() {
+        assert_eq!(parse_decimal(".5", 2), Ok(50));
+        assert_eq!(parse_decimal("5.", 2), Ok(500));
+    }
+
+    #[test]
+    fn parse_decimal_whitespace_is_trimmed() {
+        assert_eq!(parse_decimal("  19.99  ", 2), Ok(1999));
+    }
+
+    #[test]
+    fn parse_decimal_rejects_empty() {
+        assert!(parse_decimal("", 2).is_err());
+        assert!(parse_decimal("   ", 2).is_err());
+        assert!(parse_decimal("-", 2).is_err());
+        assert!(parse_decimal(".", 2).is_err());
+    }
+
+    #[test]
+    fn parse_decimal_rejects_garbage() {
+        assert!(parse_decimal("nineteen", 2).is_err());
+        assert!(parse_decimal("19.9a", 2).is_err());
+        assert!(parse_decimal("1,999.99", 2).is_err());
+        assert!(parse_decimal("19..99", 2).is_err());
+        assert!(parse_decimal("19.9.9", 2).is_err());
+    }
+
+    #[test]
+    fn parse_decimal_rejects_too_many_fraction_digits() {
+        assert!(parse_decimal("19.999", 2).is_err());
+        assert!(parse_decimal("500.5", 0).is_err());
+    }
+
+    #[test]
+    fn parse_decimal_rejects_overflow() {
+        assert!(parse_decimal("99999999999999999999", 2).is_err());
+    }
+
+    #[test]
+    fn format_minor_plain() {
+        assert_eq!(format_minor(1999, 2), "19.99");
+        assert_eq!(format_minor(5, 2), "0.05");
+        assert_eq!(format_minor(500, 0), "500");
+        assert_eq!(format_minor(12500, 3), "12.500");
+    }
+
+    #[test]
+    fn format_minor_negative() {
+        assert_eq!(format_minor(-1999, 2), "-19.99");
+        assert_eq!(format_minor(-5, 2), "-0.05");
+        assert_eq!(format_minor(-500, 0), "-500");
+    }
+
+    #[test]
+    fn format_minor_zero() {
+        assert_eq!(format_minor(0, 2), "0.00");
+        assert_eq!(format_minor(0, 0), "0");
+    }
+
+    #[test]
+    fn parse_then_format_roundtrip() {
+        for (amount, exponent) in [("19.99", 2), ("500", 0), ("12.500", 3), ("-3.00", 2)] {
+            let minor = parse_decimal(amount, exponent).unwrap();
+            assert_eq!(format_minor(minor, exponent), amount);
+        }
+    }
+
+    #[test]
+    fn exponent_table_known_values() {
+        assert_eq!(exponent_for("JPY"), 0);
+        assert_eq!(exponent_for("KWD"), 3);
+        assert_eq!(exponent_for("USD"), 2);
+        assert_eq!(exponent_for("XYZ"), 2);
+    }
+}
