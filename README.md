@@ -58,6 +58,23 @@ Malformed lines are reported to stderr with their line number and skipped;
 the rest of the input is still processed. The process exits non-zero if any
 line failed.
 
+### CSV
+
+With `--csv`, the first non-empty line is a header that must name a
+`currency` column and an `amount` column (any order, any case; other columns
+are dropped). Output is always `currency,amount`:
+
+```
+$ printf 'id,currency,amount\n1,usd,19.99\n2,JPY,500\n' | moneyconv --csv --from plain --to ledger
+currency,amount
+USD,1999
+JPY,500
+```
+
+Quoted fields are understood, but fields with embedded newlines are not. A
+bad header stops the run; bad rows are skipped like bad lines in the plain
+formats.
+
 ## Building
 
 Standard library only, no dependencies:
